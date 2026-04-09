@@ -45,8 +45,6 @@ What i use it for ?
 ## Installation
 
 
-```
-
 ```bash
 git clone https://github.com/spectralabode/sherpa-voice-setup.git
 cd sherpa-voice-setup
