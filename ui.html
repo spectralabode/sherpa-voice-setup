@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sherpa Voice — TTS &amp; STT</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #0f1117;
+    --surface: #1a1d27;
+    --border:  #2e3347;
+    --accent:  #6c8fff;
+    --accent2: #a78bfa;
+    --text:    #e2e8f0;
+    --muted:   #8892a4;
+    --success: #34d399;
+    --danger:  #f87171;
+    --radius:  10px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  header h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  header p { color: var(--muted); margin-top: 4px; font-size: 0.875rem; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 920px;
+    margin: 0 auto;
+  }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .card h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--accent);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 5px; }
+
+  select, textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 9px 12px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s;
+    margin-bottom: 14px;
+  }
+  select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 110px; }
+
+  button {
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  button:hover:not(:disabled) { opacity: .88; }
+  button:active:not(:disabled) { transform: scale(.98); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-danger  { background: var(--danger);  color: #fff; }
+  .btn-success { background: var(--success); color: #0f1117; }
+  .btn-muted   { background: var(--border);  color: var(--text); }
+
+  .row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .row button { margin-bottom: 0; }
+
+  audio { width: 100%; margin-top: 14px; border-radius: 6px; }
+
+  .transcript {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    min-height: 80px;
+    font-size: 0.9rem;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-top: 14px;
+  }
+
+  .status {
+    font-size: 0.8rem;
+    margin-top: 10px;
+    min-height: 20px;
+    color: var(--muted);
+  }
+  .status.ok  { color: var(--success); }
+  .status.err { color: var(--danger); }
+
+  .rec-dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--danger);
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .3; }
+  }
+
+  .copy-btn {
+    float: right;
+    width: auto;
+    padding: 3px 10px;
+    font-size: 0.75rem;
+    background: var(--border);
+    color: var(--text);
+    border-radius: 4px;
+    margin-left: 8px;
+    margin-top: -2px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>&#x1F5E3; Sherpa Voice</h1>
+  <p>Offline text-to-speech &amp; speech-to-text — powered by sherpa&#8209;onnx</p>
+</header>
+
+<div class="grid">
+
+  <!-- ===== TTS ===== -->
+  <div class="card">
+    <h2>&#x1F4AC; Text → Speech</h2>
+
+    <label for="voice">Voice model</label>
+    <select id="voice"></select>
+
+    <label for="speaker">Speaker</label>
+    <select id="speaker"></select>
+
+    <label for="tts-text">Text</label>
+    <textarea id="tts-text" placeholder="Type something to speak…">Hello! I am an offline voice assistant running entirely on your machine.</textarea>
+
+    <button class="btn-primary" id="tts-btn" onclick="doTts()">&#9654; Speak</button>
+    <audio id="tts-audio" controls style="display:none"></audio>
+    <div class="status" id="tts-status"></div>
+  </div>
+
+  <!-- ===== STT ===== -->
+  <div class="card">
+    <h2>&#x1F3A4; Speech → Text</h2>
+
+    <label>Record from microphone</label>
+    <div class="row">
+      <button class="btn-danger" id="rec-btn" onclick="toggleRec()">&#9679; Record</button>
+      <button class="btn-muted"  id="up-btn"  onclick="document.getElementById('file-in').click()">&#8679; Upload WAV / WebM</button>
+    </div>
+    <input type="file" id="file-in" accept="audio/*" style="display:none" onchange="uploadFile(this)">
+
+    <div id="transcript-wrap" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <label style="margin-bottom:0">Transcript</label>
+        <button class="copy-btn" onclick="copyTranscript()">Copy</button>
+      </div>
+      <div class="transcript" id="transcript"></div>
+      <button class="btn-muted" style="margin-top:10px;font-size:0.8rem" onclick="sendToTts()">
+        &#8618; Send to TTS
+      </button>
+    </div>
+
+    <div class="status" id="stt-status"></div>
+  </div>
+
+</div>
+
+<script>
+// ---- state ---------------------------------------------------------------
+let voices = {};
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+
+// ---- init ----------------------------------------------------------------
+async function loadVoices() {
+  try {
+    const r = await fetch('/voices');
+    voices = await r.json();
+    const sel = document.getElementById('voice');
+    sel.innerHTML = '';
+    for (const [id, v] of Object.entries(voices)) {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = v.label;
+      sel.appendChild(opt);
+    }
+    updateSpeakers();
+  } catch(e) {
+    setStatus('tts', 'Could not load voices from server.', 'err');
+  }
+}
+
+function updateSpeakers() {
+  const vid = document.getElementById('voice').value;
+  const sel = document.getElementById('speaker');
+  sel.innerHTML = '';
+  if (!voices[vid]) return;
+  voices[vid].speakers.forEach((s, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = s;
+    sel.appendChild(opt);
+  });
+}
+document.getElementById('voice').addEventListener('change', updateSpeakers);
+
+loadVoices();
+
+// ---- TTS -----------------------------------------------------------------
+async function doTts() {
+  const text    = document.getElementById('tts-text').value.trim();
+  const voice   = document.getElementById('voice').value;
+  const speaker = document.getElementById('speaker').value;
+  if (!text) { setStatus('tts', 'Please enter some text.', 'err'); return; }
+
+  const btn = document.getElementById('tts-btn');
+  btn.disabled = true;
+  setStatus('tts', 'Generating audio…');
+
+  try {
+    const fd = new FormData();
+    fd.append('text', text);
+    fd.append('voice', voice);
+    fd.append('speaker', speaker);
+    const r = await fetch('/tts', { method: 'POST', body: fd });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.detail || r.statusText); }
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const audio = document.getElementById('tts-audio');
+    audio.src = url;
+    audio.style.display = 'block';
+    audio.play();
+    setStatus('tts', 'Done.', 'ok');
+  } catch(e) {
+    setStatus('tts', 'Error: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ---- STT microphone ------------------------------------------------------
+async function toggleRec() {
+  if (isRecording) {
+    stopRec();
+  } else {
+    await startRec();
+  }
+}
+
+async function startRec() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+    mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      await transcribeBlob(blob);
+    };
+    mediaRecorder.start();
+    isRecording = true;
+    const btn = document.getElementById('rec-btn');
+    btn.innerHTML = '<span class="rec-dot"></span> Stop';
+    btn.classList.replace('btn-danger', 'btn-success');
+    setStatus('stt', 'Recording…');
+  } catch(e) {
+    setStatus('stt', 'Microphone error: ' + e.message, 'err');
+  }
+}
+
+function stopRec() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  isRecording = false;
+  const btn = document.getElementById('rec-btn');
+  btn.innerHTML = '&#9679; Record';
+  btn.classList.replace('btn-success', 'btn-danger');
+}
+
+function uploadFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  transcribeBlob(file);
+  input.value = '';
+}
+
+async function transcribeBlob(blob) {
+  setStatus('stt', 'Transcribing…');
+  document.getElementById('up-btn').disabled = true;
+  document.getElementById('rec-btn').disabled = true;
+  try {
+    const fd = new FormData();
+    fd.append('file', blob, 'audio.webm');
+    const r = await fetch('/stt', { method: 'POST', body: fd });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.detail || r.statusText); }
+    const data = await r.json();
+    showTranscript(data.transcript || '(empty)');
+    setStatus('stt', 'Done.', 'ok');
+  } catch(e) {
+    setStatus('stt', 'Error: ' + e.message, 'err');
+  } finally {
+    document.getElementById('up-btn').disabled = false;
+    document.getElementById('rec-btn').disabled = false;
+  }
+}
+
+function showTranscript(text) {
+  document.getElementById('transcript').textContent = text;
+  document.getElementById('transcript-wrap').style.display = 'block';
+}
+
+function copyTranscript() {
+  const text = document.getElementById('transcript').textContent;
+  navigator.clipboard.writeText(text).catch(() => {});
+}
+
+function sendToTts() {
+  const text = document.getElementById('transcript').textContent;
+  document.getElementById('tts-text').value = text;
+}
+
+// ---- helpers -------------------------------------------------------------
+function setStatus(side, msg, cls) {
+  const el = document.getElementById(side + '-status');
+  el.textContent = msg;
+  el.className = 'status' + (cls ? ' ' + cls : '');
+}
+</script>
+</body>
+</html>
